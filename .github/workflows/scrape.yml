@@ -2,8 +2,8 @@ name: Scrape et Publie
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
-  workflow_dispatch:
+    - cron: '*/30 * * * *'   # toutes les 30 minutes
+  workflow_dispatch:         # lancement manuel possible
 
 jobs:
   scrape:
