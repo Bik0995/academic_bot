@@ -1,5 +1,6 @@
 import asyncio
 import traceback
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import RetryAfter
 
 def format_opportunity_plain(opp: dict) -> str:
@@ -10,7 +11,6 @@ def format_opportunity_plain(opp: dict) -> str:
     level = opp.get("level", "")
     funding = opp.get("funding", "")
     deadline = opp.get("deadline", "")
-    link = opp.get("link", "")
 
     lines = [f"🎓 {title}"]
     if summary:
@@ -20,33 +20,41 @@ def format_opportunity_plain(opp: dict) -> str:
         lines.append("🌍 " + " | ".join(parts))
     if deadline:
         lines.append(f"⏳ {deadline}")
-    lines.append(f"🔗 {link}")
+    # Le lien sera dans le bouton, pas dans le texte
     return "\n".join(lines)
 
 async def publish_opportunity(bot, channel_id: int, opp: dict):
     plain = format_opportunity_plain(opp)
     image_url = opp.get("image_url")
+    link = opp.get("link", "")
 
-    # Essayer d'envoyer une photo avec légende
+    # Créer le bouton "Voir l'offre"
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔗 Voir l'offre", url=link)]
+    ]) if link else None
+
+    # Essayer d'envoyer une photo avec légende et bouton
     if image_url:
         try:
             await bot.send_photo(
                 chat_id=channel_id,
                 photo=image_url,
                 caption=plain,
-                disable_web_page_preview=False
+                reply_markup=keyboard,
+                disable_web_page_preview=True
             )
             return
         except Exception as e:
             print(f"Échec envoi image pour '{opp.get('title','')}': {e}")
 
-    # Fallback texte seul (avec gestion du flood)
+    # Fallback texte seul avec bouton
     max_retries = 3
     for attempt in range(max_retries):
         try:
             await bot.send_message(
                 chat_id=channel_id,
                 text=plain,
+                reply_markup=keyboard,
                 disable_web_page_preview=True
             )
             return
