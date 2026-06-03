@@ -10,8 +10,13 @@ class FakeApp:
         def __init__(self, token):
             from telegram import Bot
             self._bot = Bot(token)
+
         async def send_message(self, *args, **kwargs):
             return await self._bot.send_message(*args, **kwargs)
+
+        async def send_photo(self, *args, **kwargs):
+            return await self._bot.send_photo(*args, **kwargs)
+
     def __init__(self, token, channel_id):
         self.bot = self.FakeBot(token)
         self.bot_data = {"channel_id": channel_id}
@@ -19,12 +24,11 @@ class FakeApp:
 async def main():
     Base.metadata.create_all(bind=engine)
 
-    # Nettoyage et validation du channel_id
     raw = CHANNEL_ID.strip().strip('"').strip("'")
     if not raw.lstrip('-').isdigit():
         print(f"ERREUR : CHANNEL_ID invalide ({raw}). Vérifiez le secret GitHub.")
         sys.exit(1)
-    
+
     app = FakeApp(TELEGRAM_BOT_TOKEN, raw)
     await scrape_and_publish(app)
     print("Exécution terminée.")
