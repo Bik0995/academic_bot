@@ -30,10 +30,10 @@ def format_opportunity(opp: dict) -> str:
     )
 
 async def publish_opportunity(bot, channel_id: int, opp: dict):
-    text = format_opportunity(opp)
+    # Version temporaire en texte brut pour contourner les erreurs de formatage
+    text = f"{opp['title']}\n\n{opp.get('summary','')}\n\n{opp.get('country','')} | {opp.get('level','')} | {opp.get('funding','')}\nDeadline: {opp.get('deadline','')}\n{opp['link']}"
     await bot.send_message(
         chat_id=channel_id,
         text=text,
-        parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
