@@ -20,7 +20,6 @@ async def scrape_and_publish(app):
             for opp in opportunities:
                 if process_opportunity(opp, opp["hash"]):
                     await publish_opportunity(bot, channel_id, opp)
-                    # délai déjà inclus dans publish_opportunity
         except Exception as e:
             print(f"Erreur {scraper.__class__.__name__}: {e}")
         finally:

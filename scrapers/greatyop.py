@@ -12,10 +12,8 @@ class GreatYopScraper(BaseScraper):
         html = await self.fetch_html(self.BASE_URL)
         soup = BeautifulSoup(html, "html.parser")
 
-        # Sélectionne les articles (ou conteneurs de chaque offre)
         articles = soup.select("article, .post, .entry")
         if not articles:
-            # Si aucun article, on prend les liens de titre et on remonte au parent
             title_links = soup.select("h2 a, h3 a, .entry-title a, .post-title a")
             articles = [link.find_parent(["article", "div.post", "div.entry"]) for link in title_links if link.find_parent(["article", "div.post", "div.entry"])]
         print(f"GreatYop : {len(articles)} articles trouvés")
@@ -29,10 +27,8 @@ class GreatYopScraper(BaseScraper):
             if not title or not href:
                 continue
 
-            # Image depuis l'article sur la page liste
             image_url = self.extract_image_url_from_article(article, self.BASE_URL)
 
-            # Détails depuis la page de détail (si possible)
             detail_soup = None
             try:
                 detail_html = await self.fetch_html(href)
@@ -45,14 +41,16 @@ class GreatYopScraper(BaseScraper):
             country = ""
             level = ""
             funding = ""
+            benefits = []
             if detail_soup:
                 summary = self._extract_first(detail_soup, [".entry-content p", ".post-content p", "article p"])
                 deadline = self._extract_first(detail_soup, [".deadline", ".application-deadline", "time", ".entry-date"])
                 country = self._extract_first(detail_soup, [".country", ".location", ".entry-categories a", ".post-categories a"])
                 level = self._extract_first(detail_soup, [".level", ".degree-level", ".eligibility"])
                 funding = self._extract_first(detail_soup, [".funding", ".financial-aid", ".scholarship-type", ".benefits"])
+                benefits = self.extract_benefits(detail_soup)
 
-            summary = clean_html(summary)[:300] if summary else ""
+            summary = clean_html(summary)[:400] if summary else ""
             deadline = deadline.strip() if deadline else ""
             country = country.strip() if country else ""
             level = level.strip() if level else ""
@@ -75,7 +73,8 @@ class GreatYopScraper(BaseScraper):
                 "link": href,
                 "source": "GreatYop",
                 "hash": hash_val,
-                "image_url": image_url
+                "image_url": image_url,
+                "benefits": benefits
             })
 
         print(f"GreatYop : {len(opportunities)} offres construites")

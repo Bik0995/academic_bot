@@ -48,6 +48,34 @@ class BaseScraper(ABC):
                 return urljoin(base_url, src)
         return None
 
+    @staticmethod
+    def extract_benefits(detail_soup):
+        """Cherche une liste d'avantages (li) dans une section contenant 'benefit'."""
+        if not detail_soup:
+            return []
+        # Chercher un élément dont le texte contient "benefit" (h2, h3, strong)
+        benefit_header = None
+        for tag in detail_soup.find_all(['h2','h3','h4','strong','b']):
+            if 'benefit' in tag.get_text().lower():
+                benefit_header = tag
+                break
+        if not benefit_header:
+            # Fallback : cherche n'importe quelle liste après le premier paragraphe
+            benefit_header = detail_soup.find('p')
+        if not benefit_header:
+            return []
+        # Récupère la liste suivant immédiatement ce titre (ul/ol)
+        ul = benefit_header.find_next('ul') or benefit_header.find_next('ol')
+        if not ul:
+            # Parfois les avantages sont dans des div ou p, on ne peut pas tout deviner
+            return []
+        items = []
+        for li in ul.find_all('li'):
+            txt = li.get_text(strip=True)
+            if txt:
+                items.append(txt)
+        return items
+
     @abstractmethod
     async def scrape(self):
         pass

@@ -41,14 +41,16 @@ class Scholars4DevScraper(BaseScraper):
             country = ""
             level = ""
             funding = ""
+            benefits = []
             if detail_soup:
                 summary = self._extract_first(detail_soup, [".entry-content p", ".post-content p", "article p"])
                 deadline = self._extract_first(detail_soup, [".deadline", ".application-deadline", "time", ".entry-date"])
                 country = self._extract_first(detail_soup, [".country", ".location", ".entry-categories a", ".post-categories a"])
                 level = self._extract_first(detail_soup, [".level", ".degree-level", ".eligibility"])
                 funding = self._extract_first(detail_soup, [".funding", ".financial-aid", ".scholarship-type", ".benefits"])
+                benefits = self.extract_benefits(detail_soup)
 
-            summary = clean_html(summary)[:300] if summary else ""
+            summary = clean_html(summary)[:400] if summary else ""
             deadline = deadline.strip() if deadline else ""
             country = country.strip() if country else ""
             level = level.strip() if level else ""
@@ -71,7 +73,8 @@ class Scholars4DevScraper(BaseScraper):
                 "link": href,
                 "source": "Scholars4Dev",
                 "hash": hash_val,
-                "image_url": image_url
+                "image_url": image_url,
+                "benefits": benefits
             })
 
         print(f"Scholars4Dev : {len(opportunities)} offres construites")
