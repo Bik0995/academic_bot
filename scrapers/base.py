@@ -5,7 +5,9 @@ from abc import ABC, abstractmethod
 
 class BaseScraper(ABC):
     HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5"
     }
 
     def __init__(self):
@@ -30,29 +32,20 @@ class BaseScraper(ABC):
             await self.session.close()
 
     @staticmethod
-    def extract_image_url(soup, base_url):
-        """Cherche l'image principale et retourne l'URL absolue."""
-        if not soup:
+    def extract_image_url_from_article(article_soup, base_url):
+        """Extrait l'URL absolue de la miniature d'un article (page liste)."""
+        if not article_soup:
             return None
-        candidates = [
-            soup.find("meta", property="og:image"),
-            soup.find("meta", attrs={"name": "twitter:image"}),
-            soup.find("meta", property="twitter:image"),
-        ]
-        for meta in candidates:
-            if meta and meta.get("content"):
-                return urljoin(base_url, meta["content"])
-
-        # Fallback : première image dans l'article
-        article = soup.find("article") or soup.find(class_=re.compile(r"post|entry"))
-        if article:
-            img = article.find("img")
+        # Cherche dans l'ordre : figure, img sans classe d'icône
+        figure = article_soup.find("figure")
+        if figure:
+            img = figure.find("img")
             if img and img.get("src"):
                 return urljoin(base_url, img["src"])
-        # Première image du document
-        img = soup.find("img")
-        if img and img.get("src"):
-            return urljoin(base_url, img["src"])
+        for img in article_soup.find_all("img"):
+            src = img.get("src")
+            if src and not any(x in src.lower() for x in ["icon", "logo", "avatar", "gravatar", "flag"]):
+                return urljoin(base_url, src)
         return None
 
     @abstractmethod
