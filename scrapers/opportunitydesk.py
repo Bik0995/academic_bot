@@ -8,25 +8,28 @@ class OpportunityDeskScraper(BaseScraper):
 
     async def scrape(self):
         opportunities = []
-        async with self.session.get(self.BASE_URL) as resp:
-            html = await resp.text()
+        html = await self.fetch_html(self.BASE_URL)
         soup = BeautifulSoup(html, "html.parser")
-        # Sélecteur élargi pour attraper les titres d'articles
-        articles = soup.select("article")
-        if not articles:
-            # Si pas de balise <article>, on cherche des blocs de type "post"
-            articles = soup.select(".post, .post-item, .entry")
-        for article in articles:
-            title_el = article.select_one("h2 a, h3 a, .entry-title a, .post-title a")
-            if not title_el:
+
+        # Sélecteur très large : tout lien dans un titre (h2, h3) ou classe courante de WordPress
+        title_links = soup.select("h2 a, h3 a, .entry-title a, .post-title a")
+        print(f"OpportunityDesk : {len(title_links)} liens de titre trouvés")
+
+        for link_el in title_links:
+            title = link_el.get_text(strip=True)
+            href = link_el.get("href")
+            if not title or not href:
                 continue
-            title = title_el.text.strip()
-            link = title_el.get("href")
-            if not link:
-                continue
-            summary_el = article.select_one(".entry-summary, .post-content, .entry-content")
-            summary = clean_html(summary_el.text) if summary_el else ""
-            hash_val = hashlib.sha256(f"{title}{link}".encode()).hexdigest()
+
+            # Récupération du résumé (dans l'élément parent le plus proche)
+            parent_article = link_el.find_parent(["article", "div.post", "div.entry"])
+            summary = ""
+            if parent_article:
+                summary_el = parent_article.select_one(".entry-summary, .post-content, .entry-content, p")
+                if summary_el:
+                    summary = clean_html(summary_el.get_text())
+
+            hash_val = hashlib.sha256(f"{title}{href}".encode()).hexdigest()
             opportunities.append({
                 "title": title,
                 "summary": summary,
@@ -34,9 +37,10 @@ class OpportunityDeskScraper(BaseScraper):
                 "level": "",
                 "funding": "",
                 "deadline": "",
-                "link": link,
+                "link": href,
                 "source": "OpportunityDesk",
                 "hash": hash_val
             })
-        print(f"OpportunityDesk : {len(opportunities)} offres extraites")
+
+        print(f"OpportunityDesk : {len(opportunities)} offres construites")
         return opportunities

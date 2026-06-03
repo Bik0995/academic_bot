@@ -8,21 +8,26 @@ class OyaOpScraper(BaseScraper):
 
     async def scrape(self):
         opportunities = []
-        async with self.session.get(self.BASE_URL) as resp:
-            html = await resp.text()
+        html = await self.fetch_html(self.BASE_URL)
         soup = BeautifulSoup(html, "html.parser")
-        articles = soup.select("article, .post, .entry")
-        for article in articles:
-            title_el = article.select_one("h2 a, h3 a, .entry-title a, .post-title a")
-            if not title_el:
+
+        title_links = soup.select("h2 a, h3 a, .entry-title a, .post-title a")
+        print(f"OyaOp : {len(title_links)} liens de titre trouvés")
+
+        for link_el in title_links:
+            title = link_el.get_text(strip=True)
+            href = link_el.get("href")
+            if not title or not href:
                 continue
-            title = title_el.text.strip()
-            link = title_el.get("href")
-            if not link:
-                continue
-            summary_el = article.select_one(".entry-summary, .post-content, .entry-content")
-            summary = clean_html(summary_el.text) if summary_el else ""
-            hash_val = hashlib.sha256(f"{title}{link}".encode()).hexdigest()
+
+            parent_article = link_el.find_parent(["article", "div.post", "div.entry"])
+            summary = ""
+            if parent_article:
+                summary_el = parent_article.select_one(".entry-summary, .post-content, .entry-content, p")
+                if summary_el:
+                    summary = clean_html(summary_el.get_text())
+
+            hash_val = hashlib.sha256(f"{title}{href}".encode()).hexdigest()
             opportunities.append({
                 "title": title,
                 "summary": summary,
@@ -30,9 +35,10 @@ class OyaOpScraper(BaseScraper):
                 "level": "",
                 "funding": "",
                 "deadline": "",
-                "link": link,
+                "link": href,
                 "source": "OyaOp",
                 "hash": hash_val
             })
-        print(f"OyaOp : {len(opportunities)} offres extraites")
+
+        print(f"OyaOp : {len(opportunities)} offres construites")
         return opportunities
