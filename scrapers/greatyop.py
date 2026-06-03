@@ -32,8 +32,8 @@ class GreatYopScraper(BaseScraper):
             try:
                 detail_html = await self.fetch_html(href)
                 detail_soup = BeautifulSoup(detail_html, "html.parser")
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Erreur chargement détail {href}: {e}")
 
             summary = self._extract_first(detail_soup, self.DETAIL_SELECTORS["summary"])
             deadline = self._extract_first(detail_soup, self.DETAIL_SELECTORS["deadline"])
@@ -41,7 +41,7 @@ class GreatYopScraper(BaseScraper):
             level = self._extract_first(detail_soup, self.DETAIL_SELECTORS["level"])
             funding = self._extract_first(detail_soup, self.DETAIL_SELECTORS["funding"])
 
-            summary = clean_html(summary)[:280] if summary else ""
+            summary = clean_html(summary)[:300] if summary else ""
             deadline = deadline.strip() if deadline else ""
             country = country.strip() if country else ""
             level = level.strip() if level else ""
@@ -49,11 +49,12 @@ class GreatYopScraper(BaseScraper):
 
             if not deadline and detail_soup:
                 text = detail_soup.get_text()
-                match = re.search(r"(?:deadline|apply by|closing date)[:\s]+([\w\s,]+)", text, re.I)
+                match = re.search(r"(?:deadline|apply by|closing date)[:\s]+([\w\s,0-9]+)", text, re.I)
                 if match:
                     deadline = match.group(1).strip()
 
-            image_url = self.extract_image_url(detail_soup)
+            # Extraction de l'image avec base_url = href
+            image_url = self.extract_image_url(detail_soup, base_url=href)
 
             hash_val = hashlib.sha256(f"{title}{href}".encode()).hexdigest()
             opportunities.append({

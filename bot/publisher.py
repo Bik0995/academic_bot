@@ -6,21 +6,31 @@ from telegram.error import RetryAfter
 def format_opportunity_plain(opp: dict) -> str:
     title = opp.get("title", "Sans titre")
     summary_raw = opp.get("summary", "")
-    summary = summary_raw[:280] + ("..." if len(summary_raw) > 280 else "")
+    summary = summary_raw[:300] + ("..." if len(summary_raw) > 300 else "")
     country = opp.get("country", "")
     level = opp.get("level", "")
     funding = opp.get("funding", "")
     deadline = opp.get("deadline", "")
 
-    lines = [f"🎓 {title}"]
+    lines = [f"🎓 {title}\n"]
+
     if summary:
-        lines.append(f"📌 {summary}")
-    if country or level or funding:
-        parts = [p for p in [country, level, funding] if p]
-        lines.append("🌍 " + " | ".join(parts))
+        lines.append(f"📌 {summary}\n")
+
+    # Bloc d'infos avec icônes distinctes
+    info_parts = []
+    if country:
+        info_parts.append(f"🌍 {country}")
+    if level:
+        info_parts.append(f"🎯 {level}")
+    if funding:
+        info_parts.append(f"💰 {funding}")
+    if info_parts:
+        lines.append(" | ".join(info_parts))
+
     if deadline:
-        lines.append(f"⏳ {deadline}")
-    # Le lien sera dans le bouton, pas dans le texte
+        lines.append(f"\n⏳ Deadline: {deadline}")
+
     return "\n".join(lines)
 
 async def publish_opportunity(bot, channel_id: int, opp: dict):
@@ -28,12 +38,12 @@ async def publish_opportunity(bot, channel_id: int, opp: dict):
     image_url = opp.get("image_url")
     link = opp.get("link", "")
 
-    # Créer le bouton "Voir l'offre"
+    # Bouton élégant
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔗 Voir l'offre", url=link)]
+        [InlineKeyboardButton("🔗 Voir l'offre complète", url=link)]
     ]) if link else None
 
-    # Essayer d'envoyer une photo avec légende et bouton
+    # Tentative d'envoi avec photo
     if image_url:
         try:
             await bot.send_photo(
@@ -45,7 +55,7 @@ async def publish_opportunity(bot, channel_id: int, opp: dict):
             )
             return
         except Exception as e:
-            print(f"Échec envoi image pour '{opp.get('title','')}': {e}")
+            print(f"Image invalide ou erreur : {e}")
 
     # Fallback texte seul avec bouton
     max_retries = 3

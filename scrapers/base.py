@@ -1,5 +1,6 @@
 import aiohttp
 import re
+from urllib.parse import urljoin
 from abc import ABC, abstractmethod
 
 class BaseScraper(ABC):
@@ -18,7 +19,6 @@ class BaseScraper(ABC):
             return await resp.json()
 
     async def fetch_html(self, url: str):
-        """Récupère le HTML d'une page avec le User‑Agent."""
         if not self.session:
             self.session = aiohttp.ClientSession(headers=self.HEADERS)
         async with self.session.get(url) as resp:
@@ -30,28 +30,29 @@ class BaseScraper(ABC):
             await self.session.close()
 
     @staticmethod
-    def extract_image_url(soup):
-        """Cherche l'image principale d'un article (og:image, twitter:image, première image)."""
+    def extract_image_url(soup, base_url):
+        """Cherche l'image principale et retourne l'URL absolue."""
         if not soup:
             return None
-        # og:image
-        og = soup.find("meta", property="og:image")
-        if og and og.get("content"):
-            return og["content"]
-        # twitter:image
-        tw = soup.find("meta", attrs={"name": "twitter:image"})
-        if tw and tw.get("content"):
-            return tw["content"]
-        # Première image dans un article ou une div de contenu
+        candidates = [
+            soup.find("meta", property="og:image"),
+            soup.find("meta", attrs={"name": "twitter:image"}),
+            soup.find("meta", property="twitter:image"),
+        ]
+        for meta in candidates:
+            if meta and meta.get("content"):
+                return urljoin(base_url, meta["content"])
+
+        # Fallback : première image dans l'article
         article = soup.find("article") or soup.find(class_=re.compile(r"post|entry"))
         if article:
             img = article.find("img")
             if img and img.get("src"):
-                return img["src"]
+                return urljoin(base_url, img["src"])
         # Première image du document
         img = soup.find("img")
         if img and img.get("src"):
-            return img["src"]
+            return urljoin(base_url, img["src"])
         return None
 
     @abstractmethod
