@@ -12,25 +12,14 @@ def format_opportunity_plain(opp: dict) -> str:
     funding = opp.get("funding", "")
     deadline = opp.get("deadline", "")
 
-    lines = [f"🎓 {title}\n"]
-
+    lines = [f"🎓 {title}"]
     if summary:
-        lines.append(f"📌 {summary}\n")
-
-    # Bloc d'infos avec icônes distinctes
-    info_parts = []
-    if country:
-        info_parts.append(f"🌍 {country}")
-    if level:
-        info_parts.append(f"🎯 {level}")
-    if funding:
-        info_parts.append(f"💰 {funding}")
-    if info_parts:
-        lines.append(" | ".join(info_parts))
-
+        lines.append(f"📌 {summary}")
+    if country or level or funding:
+        parts = [p for p in [country, level, funding] if p]
+        lines.append("🌍 " + " | ".join(parts))
     if deadline:
-        lines.append(f"\n⏳ Deadline: {deadline}")
-
+        lines.append(f"⏳ {deadline}")
     return "\n".join(lines)
 
 async def publish_opportunity(bot, channel_id: int, opp: dict):
@@ -38,26 +27,25 @@ async def publish_opportunity(bot, channel_id: int, opp: dict):
     image_url = opp.get("image_url")
     link = opp.get("link", "")
 
-    # Bouton élégant
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("🔗 Voir l'offre complète", url=link)]
     ]) if link else None
 
-    # Tentative d'envoi avec photo
+    # Essayer d'envoyer une photo
     if image_url:
         try:
             await bot.send_photo(
                 chat_id=channel_id,
                 photo=image_url,
                 caption=plain,
-                reply_markup=keyboard,
-                disable_web_page_preview=True
+                reply_markup=keyboard
             )
+            await asyncio.sleep(5)  # délai pour éviter le flood
             return
         except Exception as e:
             print(f"Image invalide ou erreur : {e}")
 
-    # Fallback texte seul avec bouton
+    # Fallback texte seul
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -67,6 +55,7 @@ async def publish_opportunity(bot, channel_id: int, opp: dict):
                 reply_markup=keyboard,
                 disable_web_page_preview=True
             )
+            await asyncio.sleep(5)  # délai après chaque envoi
             return
         except RetryAfter as e:
             wait = e.retry_after
@@ -78,4 +67,4 @@ async def publish_opportunity(bot, channel_id: int, opp: dict):
             if attempt == max_retries - 1:
                 print("Abandon après 3 tentatives")
             else:
-                await asyncio.sleep(2)
+                await asyncio.sleep(5)
