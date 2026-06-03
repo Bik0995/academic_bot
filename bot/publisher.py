@@ -1,8 +1,8 @@
 import re
-import logging
+import asyncio
+import traceback
 from telegram.constants import ParseMode
-
-logger = logging.getLogger(__name__)
+from telegram.error import RetryAfter
 
 def escape_md_v2(text: str) -> str:
     escape_chars = r"_*[]()~`>#+-=|{}.!"
@@ -11,42 +11,46 @@ def escape_md_v2(text: str) -> str:
 def escape_link_url(url: str) -> str:
     return url.replace("\\", "\\\\").replace(")", "\\)")
 
-def format_opportunity(opp: dict) -> str:
-    title = escape_md_v2(opp.get("title", "Sans titre"))
+def format_opportunity_plain(opp: dict) -> str:
+    title = opp.get("title", "Sans titre")
     summary_raw = opp.get("summary", "")
-    summary = escape_md_v2(summary_raw[:280] + ("..." if len(summary_raw) > 280 else ""))
-    country = escape_md_v2(opp.get("country", "N/A"))
-    level = escape_md_v2(opp.get("level", "N/A"))
-    funding = escape_md_v2(opp.get("funding", "N/A"))
-    deadline = escape_md_v2(opp.get("deadline", "N/A"))
-    link_esc = escape_link_url(opp.get("link", ""))
+    summary = summary_raw[:280] + ("..." if len(summary_raw) > 280 else "")
+    country = opp.get("country", "")
+    level = opp.get("level", "")
+    funding = opp.get("funding", "")
+    deadline = opp.get("deadline", "")
+    link = opp.get("link", "")
 
-    return (
-        f"🎓 *{title}*\n"
-        f"📌 {summary}\n"
-        f"🌍 {country} | 🎯 {level} | 💰 {funding}\n"
-        f"⏳ {deadline}\n"
-        f"🔗 [Lien officiel]({link_esc})"
-    )
+    lines = [f"🎓 {title}"]
+    if summary:
+        lines.append(f"📌 {summary}")
+    if country or level or funding:
+        parts = [p for p in [country, level, funding] if p]
+        lines.append("🌍 " + " | ".join(parts))
+    if deadline:
+        lines.append(f"⏳ {deadline}")
+    lines.append(f"🔗 {link}")
+    return "\n".join(lines)
 
 async def publish_opportunity(bot, channel_id: int, opp: dict):
-    # Essaie d'abord avec MarkdownV2
-    try:
-        text = format_opportunity(opp)
-        await bot.send_message(
-            chat_id=channel_id,
-            text=text,
-            parse_mode=ParseMode.MARKDOWN_V2,
-            disable_web_page_preview=True
-        )
-    except Exception:
-        # Si échec, envoi en texte brut sans mise en forme
+    plain = format_opportunity_plain(opp)
+    max_retries = 3
+    for attempt in range(max_retries):
         try:
-            plain = f"{opp['title']}\n\n{opp.get('summary','')}\n\n{opp.get('country','')} | {opp.get('level','')} | {opp.get('funding','')}\nDeadline: {opp.get('deadline','')}\n{opp['link']}"
             await bot.send_message(
                 chat_id=channel_id,
                 text=plain,
                 disable_web_page_preview=True
             )
+            return
+        except RetryAfter as e:
+            wait = e.retry_after
+            print(f"Flood control, attente {wait}s")
+            await asyncio.sleep(wait)
         except Exception as e:
-            logger.error(f"Échec total de l'envoi : {e}")
+            print(f"Erreur envoi : {e}")
+            traceback.print_exc()
+            if attempt == max_retries - 1:
+                print("Abandon après 3 tentatives")
+            else:
+                await asyncio.sleep(2)
