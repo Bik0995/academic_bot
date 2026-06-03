@@ -2,6 +2,14 @@ import asyncio
 from scrapers.euraxess import EuraxessScraper
 from scrapers.daad import DAADScraper
 from scrapers.euroyouth import EuroYouthScraper
+from scrapers.opportunitydesk import OpportunityDeskScraper
+from scrapers.afterschoolafrica import AfterSchoolAfricaScraper
+from scrapers.greatyop import GreatYopScraper
+from scrapers.scholars4dev import Scholars4DevScraper
+from scrapers.mladiinfo import MladiinfoScraper
+from scrapers.youthop import YouthOpScraper
+from scrapers.oyaop import OyaOpScraper
+from scrapers.wemakescholars import WeMakeScholarsScraper
 from core.deduplicator import process_opportunity
 from bot.publisher import publish_opportunity
 
@@ -9,7 +17,15 @@ async def scrape_and_publish(app):
     scrapers = [
         EuraxessScraper(),
         DAADScraper(),
-        EuroYouthScraper()
+        EuroYouthScraper(),
+        OpportunityDeskScraper(),
+        AfterSchoolAfricaScraper(),
+        GreatYopScraper(),
+        Scholars4DevScraper(),
+        MladiinfoScraper(),
+        YouthOpScraper(),
+        OyaOpScraper(),
+        WeMakeScholarsScraper()
     ]
     for scraper in scrapers:
         try:
