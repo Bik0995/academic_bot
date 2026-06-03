@@ -1,4 +1,5 @@
 import aiohttp
+import re
 from abc import ABC, abstractmethod
 
 class BaseScraper(ABC):
@@ -17,7 +18,7 @@ class BaseScraper(ABC):
             return await resp.json()
 
     async def fetch_html(self, url: str):
-        """Nouvelle méthode pour récupérer du HTML avec User‑Agent."""
+        """Récupère le HTML d'une page avec le User‑Agent."""
         if not self.session:
             self.session = aiohttp.ClientSession(headers=self.HEADERS)
         async with self.session.get(url) as resp:
@@ -27,6 +28,31 @@ class BaseScraper(ABC):
     async def close(self):
         if self.session:
             await self.session.close()
+
+    @staticmethod
+    def extract_image_url(soup):
+        """Cherche l'image principale d'un article (og:image, twitter:image, première image)."""
+        if not soup:
+            return None
+        # og:image
+        og = soup.find("meta", property="og:image")
+        if og and og.get("content"):
+            return og["content"]
+        # twitter:image
+        tw = soup.find("meta", attrs={"name": "twitter:image"})
+        if tw and tw.get("content"):
+            return tw["content"]
+        # Première image dans un article ou une div de contenu
+        article = soup.find("article") or soup.find(class_=re.compile(r"post|entry"))
+        if article:
+            img = article.find("img")
+            if img and img.get("src"):
+                return img["src"]
+        # Première image du document
+        img = soup.find("img")
+        if img and img.get("src"):
+            return img["src"]
+        return None
 
     @abstractmethod
     async def scrape(self):

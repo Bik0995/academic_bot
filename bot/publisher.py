@@ -1,15 +1,6 @@
-import re
 import asyncio
 import traceback
-from telegram.constants import ParseMode
 from telegram.error import RetryAfter
-
-def escape_md_v2(text: str) -> str:
-    escape_chars = r"_*[]()~`>#+-=|{}.!"
-    return re.sub(f"([{re.escape(escape_chars)}])", r"\\\1", text)
-
-def escape_link_url(url: str) -> str:
-    return url.replace("\\", "\\\\").replace(")", "\\)")
 
 def format_opportunity_plain(opp: dict) -> str:
     title = opp.get("title", "Sans titre")
@@ -34,6 +25,22 @@ def format_opportunity_plain(opp: dict) -> str:
 
 async def publish_opportunity(bot, channel_id: int, opp: dict):
     plain = format_opportunity_plain(opp)
+    image_url = opp.get("image_url")
+
+    # Essayer d'envoyer une photo avec légende
+    if image_url:
+        try:
+            await bot.send_photo(
+                chat_id=channel_id,
+                photo=image_url,
+                caption=plain,
+                disable_web_page_preview=False
+            )
+            return
+        except Exception as e:
+            print(f"Échec envoi image pour '{opp.get('title','')}': {e}")
+
+    # Fallback texte seul (avec gestion du flood)
     max_retries = 3
     for attempt in range(max_retries):
         try:
