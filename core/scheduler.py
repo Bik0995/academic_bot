@@ -1,7 +1,4 @@
 import asyncio
-from scrapers.euraxess import EuraxessScraper
-from scrapers.daad import DAADScraper
-from scrapers.euroyouth import EuroYouthScraper
 from scrapers.opportunitydesk import OpportunityDeskScraper
 from scrapers.afterschoolafrica import AfterSchoolAfricaScraper
 from scrapers.greatyop import GreatYopScraper
@@ -15,9 +12,6 @@ from bot.publisher import publish_opportunity
 
 async def scrape_and_publish(app):
     scrapers = [
-        EuraxessScraper(),
-        DAADScraper(),
-        EuroYouthScraper(),
         OpportunityDeskScraper(),
         AfterSchoolAfricaScraper(),
         GreatYopScraper(),
@@ -30,7 +24,9 @@ async def scrape_and_publish(app):
     for scraper in scrapers:
         try:
             opportunities = await scraper.scrape()
+            print(f"{scraper.__class__.__name__}: {len(opportunities)} offres trouvées")
             bot = app.bot
+            # Conversion sécurisée (déjà fait dans run_scraper.py, mais au cas où)
             channel_id = int(app.bot_data["channel_id"])
             for opp in opportunities:
                 if process_opportunity(opp, opp["hash"]):

@@ -1,11 +1,11 @@
 import asyncio
+import sys
 from config import TELEGRAM_BOT_TOKEN, CHANNEL_ID
 from models.database import engine
 from models.opportunity import Base
 from core.scheduler import scrape_and_publish
 
 class FakeApp:
-    """Simule l'application Telegram pour le publisher (juste besoin de bot et bot_data)."""
     class FakeBot:
         def __init__(self, token):
             from telegram import Bot
@@ -17,13 +17,15 @@ class FakeApp:
         self.bot_data = {"channel_id": channel_id}
 
 async def main():
-    # Crée les tables si elles n'existent pas
     Base.metadata.create_all(bind=engine)
 
-    # Prépare une fausse application pour le publisher
-    app = FakeApp(TELEGRAM_BOT_TOKEN, CHANNEL_ID)
-
-    # Scrape et publie
+    # Nettoyage et validation du channel_id
+    raw = CHANNEL_ID.strip().strip('"').strip("'")
+    if not raw.lstrip('-').isdigit():
+        print(f"ERREUR : CHANNEL_ID invalide ({raw}). Vérifiez le secret GitHub.")
+        sys.exit(1)
+    
+    app = FakeApp(TELEGRAM_BOT_TOKEN, raw)
     await scrape_and_publish(app)
     print("Exécution terminée.")
 
