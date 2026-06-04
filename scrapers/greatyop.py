@@ -44,7 +44,7 @@ class GreatYopScraper(BaseScraper):
             benefits = []
             if detail_soup:
                 summary = self._extract_first(detail_soup, [".entry-content p", ".post-content p", "article p"])
-                deadline = self._extract_first(detail_soup, [".deadline", ".application-deadline", "time", ".entry-date"])
+                deadline = self.extract_deadline(detail_soup)   # <-- Utilise la nouvelle méthode
                 country = self._extract_first(detail_soup, [".country", ".location", ".entry-categories a", ".post-categories a"])
                 level = self._extract_first(detail_soup, [".level", ".degree-level", ".eligibility"])
                 funding = self._extract_first(detail_soup, [".funding", ".financial-aid", ".scholarship-type", ".benefits"])
@@ -56,6 +56,7 @@ class GreatYopScraper(BaseScraper):
             level = level.strip() if level else ""
             funding = funding.strip() if funding else ""
 
+            # fallback regex si extract_deadline n'a rien trouvé
             if not deadline and detail_soup:
                 text = detail_soup.get_text()
                 match = re.search(r"(?:deadline|apply by|closing date)[:\s]+([\w\s,0-9]+)", text, re.I)

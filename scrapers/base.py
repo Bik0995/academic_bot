@@ -33,10 +33,8 @@ class BaseScraper(ABC):
 
     @staticmethod
     def extract_image_url_from_article(article_soup, base_url):
-        """Extrait l'URL absolue de la miniature d'un article (page liste)."""
         if not article_soup:
             return None
-        # Cherche dans l'ordre : figure, img sans classe d'icône
         figure = article_soup.find("figure")
         if figure:
             img = figure.find("img")
@@ -50,24 +48,19 @@ class BaseScraper(ABC):
 
     @staticmethod
     def extract_benefits(detail_soup):
-        """Cherche une liste d'avantages (li) dans une section contenant 'benefit'."""
         if not detail_soup:
             return []
-        # Chercher un élément dont le texte contient "benefit" (h2, h3, strong)
         benefit_header = None
         for tag in detail_soup.find_all(['h2','h3','h4','strong','b']):
             if 'benefit' in tag.get_text().lower():
                 benefit_header = tag
                 break
         if not benefit_header:
-            # Fallback : cherche n'importe quelle liste après le premier paragraphe
             benefit_header = detail_soup.find('p')
         if not benefit_header:
             return []
-        # Récupère la liste suivant immédiatement ce titre (ul/ol)
         ul = benefit_header.find_next('ul') or benefit_header.find_next('ol')
         if not ul:
-            # Parfois les avantages sont dans des div ou p, on ne peut pas tout deviner
             return []
         items = []
         for li in ul.find_all('li'):
@@ -75,6 +68,24 @@ class BaseScraper(ABC):
             if txt:
                 items.append(txt)
         return items
+
+    @staticmethod
+    def extract_deadline(detail_soup):
+        """Extrait une date limite depuis le texte complet de la page."""
+        if not detail_soup:
+            return ""
+        text = detail_soup.get_text(" ", strip=True)
+        patterns = [
+            r"(?:deadline|apply\s*by|closing\s*date)[\s:]+([\w\s]+?\d{4})",
+            r"(?:deadline|apply\s*by|closing\s*date)[\s:]+(\d{1,2}\s+\w+\s+\d{4})",
+            r"(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})",
+            r"(\d{4}-\d{2}-\d{2})",
+        ]
+        for pat in patterns:
+            match = re.search(pat, text, re.I)
+            if match:
+                return match.group(1).strip()
+        return ""
 
     @abstractmethod
     async def scrape(self):
