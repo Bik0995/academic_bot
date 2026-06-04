@@ -48,15 +48,15 @@ class BaseScraper(ABC):
 
     @staticmethod
     def extract_benefits(detail_soup):
+        """Cherche une liste d'avantages uniquement dans une section 'Benefits' ou 'Scholarship covers'."""
         if not detail_soup:
             return []
         benefit_header = None
         for tag in detail_soup.find_all(['h2','h3','h4','strong','b']):
-            if 'benefit' in tag.get_text().lower():
+            txt = tag.get_text().lower()
+            if ('benefits' in txt or 'scholarship covers' in txt) and 'eligibility' not in txt:
                 benefit_header = tag
                 break
-        if not benefit_header:
-            benefit_header = detail_soup.find('p')
         if not benefit_header:
             return []
         ul = benefit_header.find_next('ul') or benefit_header.find_next('ol')
@@ -71,20 +71,18 @@ class BaseScraper(ABC):
 
     @staticmethod
     def extract_deadline(detail_soup):
-        """Extrait une date limite depuis le texte complet de la page."""
+        """Cherche une deadline uniquement si elle est annoncée par un mot-clé et pas trop ancienne."""
         if not detail_soup:
             return ""
         text = detail_soup.get_text(" ", strip=True)
-        patterns = [
-            r"(?:deadline|apply\s*by|closing\s*date)[\s:]+([\w\s]+?\d{4})",
-            r"(?:deadline|apply\s*by|closing\s*date)[\s:]+(\d{1,2}\s+\w+\s+\d{4})",
-            r"(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})",
-            r"(\d{4}-\d{2}-\d{2})",
-        ]
-        for pat in patterns:
-            match = re.search(pat, text, re.I)
-            if match:
-                return match.group(1).strip()
+        pattern = r"(?:deadline|apply\s*by|closing\s*date)[\s:]*([\w\s,]+?\d{4})"
+        match = re.search(pattern, text, re.I)
+        if match:
+            candidate = match.group(1).strip()
+            # Ignorer les dates avant 2025 (probablement une date de naissance ou autre)
+            if re.search(r"\b(19\d{2}|20[01]\d|202[0-4])\b", candidate):
+                return ""
+            return candidate
         return ""
 
     @abstractmethod

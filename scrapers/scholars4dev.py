@@ -44,7 +44,7 @@ class Scholars4DevScraper(BaseScraper):
             benefits = []
             if detail_soup:
                 summary = self._extract_first(detail_soup, [".entry-content p", ".post-content p", "article p"])
-                deadline = self._extract_first(detail_soup, [".deadline", ".application-deadline", "time", ".entry-date"])
+                deadline = self.extract_deadline(detail_soup)
                 country = self._extract_first(detail_soup, [".country", ".location", ".entry-categories a", ".post-categories a"])
                 level = self._extract_first(detail_soup, [".level", ".degree-level", ".eligibility"])
                 funding = self._extract_first(detail_soup, [".funding", ".financial-aid", ".scholarship-type", ".benefits"])
